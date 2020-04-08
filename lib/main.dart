@@ -1,139 +1,96 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:sqflite/sqflite.dart';
-import 'dart:async';
 import './transaction.dart';
+import 'dart:async';
 import './dbHelper.dart';
+import './input.dart';
 
-void main() 
+void main()
 {
-  runApp(MyExpenses());
+  runApp(ExpenseTracker());
 }
 
-class MyExpenses extends StatefulWidget {
+class ExpenseTracker extends StatefulWidget {
   @override
-  _MyExpensesState createState() => _MyExpensesState();
+  _ExpenseTrackerState createState() => _ExpenseTrackerState();
 }
 
-class _MyExpensesState extends State<MyExpenses> {
-
+class _ExpenseTrackerState extends State<ExpenseTracker> {
+ 
   DBhelper db = DBhelper();
   List<Transactions> items;
-  int count=0;
-  String titleInput;
-  String amountInput;
+  int start=0;
+  int amt;
+  String name;
+  String date;
 
-  void save(String t,double a,DateTime d) async
-  {
-    int res= await db.getCount();
-    await db.insertTransaction(Transactions(id: res+1,title: t,amt: a,date: d));
-    items = await db.getTransactionList();
+  void addItem(int amt, String name, String date) async {
+    await db.insertTransaction(Transactions(name: name,amt: amt,date: date));
+    items = await db.dogs();
+    setState(() {
+      start = 1;
+    });
   }
 
-  void addItem(String t,double a,DateTime d)
-  {
-    save(t,a,d);
-    setState(() {
-      //items.add(Transactions(id: 4,title: t,amt: a,date: d));
-    });
+  void removeItem(String name) async {
+    await db.deleteTransaction(name);
+    items = await db.dogs();
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    
-    if(items == null)
-      items = List<Transactions>();
-
     return MaterialApp(
       home: Scaffold(
+        backgroundColor: Color.fromRGBO(30, 30, 30, 1),
+        bottomNavigationBar: BottomAppBar(child: Text('Created by TanLabs',textAlign: TextAlign.center,style: TextStyle(fontSize:16,fontWeight: FontWeight.w500),),),
         appBar: AppBar(
-          backgroundColor: Color.fromRGBO(0, 0, 0, 0.8),
-          title: Text('My Expenses App'),
+          backgroundColor: Color.fromRGBO(0, 153, 230, 1),
+          title: Text('Expense Tracker'),
           centerTitle: true,
         ),
         body: Container(
           width: double.infinity,
-          margin: EdgeInsets.all(5),
-          child: Column(
-            children: <Widget>[
-              Card(
-                color: Color.fromRGBO(0, 204, 255, 0.8),
-                child: Container(
-                  width: 90,
-                  margin: EdgeInsets.all(5),
-                  child: Text(
-                    'Hello',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                elevation: 7,
-              ),
-              Card(
-                elevation: 5,
-                child:Container(
-                  margin: EdgeInsets.all(10),
-                  child: Column(children: [
-                    TextField(decoration: InputDecoration(labelText: 'Title'),onChanged: (val) => titleInput=val,),
-                    TextField(decoration: InputDecoration(labelText: 'Amount'),onChanged: (val) => amountInput=val,),
-                    //TextField(decoration: InputDecoration(labelText: 'Date')),
-                    FlatButton(onPressed: () => addItem(titleInput,double.parse(amountInput),DateTime.now()), child: Text('Enter'))
-                  ],),
-                ),
-              ),
-              Column(
-                  children: items.map((li) {
-                return Card(
-                  color: Color.fromRGBO(0, 255, 153, 0.8),
-                  child: Container(
-                    width: 300,
-                    child: Row(
-                      children: <Widget>[
-                        Container(
-                          margin: EdgeInsets.all(5),
-                          //color: Color.fromRGBO(255, 204, 204, 1),
-                          decoration: BoxDecoration(
-                              border: Border.all(
-                              width: 2,
-                              color: Colors.black,
+          margin: EdgeInsets.all(4),
+          child: SingleChildScrollView(
+                      child: Column(
+              children: <Widget>[
+                Input(name, amt, date, addItem, removeItem),
+                start == 1 ?
+                Container(
+                  height: 236,
+                  child: ListView(
+                    children: items.map((txn) {
+                        return Card(
+                          elevation: 10,
+                          child: Container(
+                            decoration: BoxDecoration(color: Color.fromRGBO(0, 191, 230, 1)),
+                            child: Row(
+                              children: <Widget>[
+                                Container(
+                                  width: 140,
+                                  margin: EdgeInsets.all(5),
+                                  decoration: BoxDecoration(color: Color.fromRGBO(221, 255, 100, 1)),
+                                  child: Text('Rs. '+txn.amt.toString(),textAlign: TextAlign.center, style: TextStyle(fontSize: 22),),
+                                  ),
+                                Container(
+                                  width: 180,
+                                  child: Column(
+                                    children: [
+                                      Text(txn.name,textAlign: TextAlign.center,style: TextStyle(fontSize:21,fontWeight: FontWeight.bold,color: Color.fromRGBO(250, 234, 215, 1)),),
+                                      Text('Date: '+txn.date,textAlign: TextAlign.center,style: TextStyle(fontSize:16,fontWeight: FontWeight.w500,color: Color.fromRGBO(200, 234, 190, 1)),),
+                                    ],
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                  ),
+                                ),
+                              ],
                             ),
-                            color: Color.fromRGBO(255, 204, 204, 1),
                           ),
-                          child: Text(
-                            'Rs.' + li.amt.toString(),
-                            style: TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.center,
-                          ),
-                        padding: EdgeInsets.fromLTRB(2, 1, 2, 1), 
-                        ),
-                        Container(
-                          width: 180,
-                          child: Column(
-                            children: <Widget>[
-                              Text(li.title,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                      fontSize: 18, fontWeight: FontWeight.bold)),
-                              Text(DateFormat.yMMMd().format(li.date),
-                                  textAlign: TextAlign.end,
-                                  style: TextStyle(
-                                      fontSize: 14, fontWeight: FontWeight.w500))
-                            ],
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          ),
-                        ),
-                      ],
-                      //mainAxisAlignment: MainAxisAlignment.center,
-                    ),
-                    margin: EdgeInsets.all(5),
+                        );
+                    }).toList()
                   ),
-                  elevation: 5,
-                );
-              }).toList()),
-            ],
-            //mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
+                ): Text(''),
+              ],
+            ),
           ),
         ),
       ),

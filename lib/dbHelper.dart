@@ -1,109 +1,84 @@
-import 'package:sqflite/sqflite.dart';
 import 'dart:async';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
 import './transaction.dart';
 
 class DBhelper
 {
-  static DBhelper _myHelper;
-  static Database _database;
-
-  final String itemInfo='itemInfo';
-  final String id='id';
-  final String title='title';
-  final String amt='amt';
-  final String date='date';
-  DBhelper._createInstance();
-
-  factory DBhelper()
+  //TestWidgetsFlutterBinding.ensureInitialized();
+  //WidgetsFlutterBinding.ensureInitialized();
+  Future<Database> database() async
   {
-    if(_myHelper == null)
-    {
-      _myHelper=DBhelper._createInstance();
-    }
+      var database;
+      if(database == null)
+      {
+          database = openDatabase(join(await getDatabasesPath(), 'expenses_database.db'),onCreate: (db, version) 
+          {
+            return db.execute("CREATE TABLE transactions(name TEXT,amt INTEGER,date TEXT)",
+          );
+          },version: 1,);
+      }
+    return database;
+  }
+  
 
-    return _myHelper;
+  Future<void> insertTransaction(Transactions txn) async {
+    // Get a reference to the database.
+    final Database db = await database();
+
+    // Insert the Dog into the correct table. Also specify the
+    // `conflictAlgorithm`. In this case, if the same dog is inserted
+    // multiple times, it replaces the previous data.
+    await db.insert(
+      'transactions',
+      txn.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
-  Future<Database> get database async
-  {
-    if(_database == null)
-    {
-      _database = await initializeDatabase();
-    }
-    return _database;
+  Future<List<Transactions>> dogs() async {
+    // Get a reference to the database.
+    final Database db = await database();
+    // Query the table for all The Dogs.
+    final List<Map<String, dynamic>> maps = await db.query('transactions');
+
+    // Convert the List<Map<String, dynamic> into a List<Dog>.
+    return List.generate(maps.length, (i) {
+      return Transactions(
+        name: maps[i]['name'],
+        amt: maps[i]['amt'],
+        date: maps[i]['date'],
+      );
+    });
   }
 
-  Future<Database> initializeDatabase() async
-  {
-    //Get directory path
-    Directory dir = await getApplicationDocumentsDirectory();
-    String path = dir.path + 'Expenses.db';
+  Future<void> updateTransaction(Transactions txn) async {
+    // Get a reference to the database.
+    final Database db = await database();
 
-    //Open/create Database at a given path
-    var expensesDB = await openDatabase(path, version: 1, onCreate: _createDB);
-    
-    return expensesDB;
+    // Update the given Dog.
+    await db.update(
+      'transactions',
+      txn.toMap(),
+      // Ensure that the Dog has a matching id.
+      where: "name = ?",
+      // Pass the Dog's id as a whereArg to prevent SQL injection.
+      whereArgs: [txn.name],
+    );
   }
 
-  void _createDB(Database db,int newVersion) async
-  {
-    await db.execute('CREATE TABLE $itemInfo($id INTEGER PRIMARY KEY , $title TEXT ,'
-                    '$amt numeric(12,2) , $date Date');
+  Future<void> deleteTransaction(String name) async {
+    // Get a reference to the database.
+    final Database db = await database();
+
+    // Remove the Dog from the database.
+    await db.delete(
+      'transactions',
+      // Use a `where` clause to delete a specific dog.
+      where: "name = ?",
+      // Pass the Dog's id as a whereArg to prevent SQL injection.
+      whereArgs: [name],
+    );
   }
-
-  //Fetch operation: Get all Objects from database 
-  Future<List<Map<String, dynamic>>> getTransactionMapList() async{
-    Database db = await this.database;
-    var result = await db.rawQuery('SELECT * FROM $itemInfo');
-    return result;  
-  }
-
-  //Insert operation: Insert a new object into the database
-  Future<int> insertTransaction(Transactions txn) async
-  {
-    Database db = await this.database;
-    var result = await db.insert(itemInfo, txn.toMap());
-    return result; 
-  }
-
-  Future<int> updateTransaction(Transactions txn) async
-  {
-    var db = await this.database;
-    var result = await db.update(itemInfo, txn.toMap(), where: '$id = ?', whereArgs: [txn.id]);
-    return result;
-  }
-
-  Future<int>deleteTransaction(int myid) async
-  {
-    var db = await this.database;
-    int result = await db.rawDelete('DELETE FROM $itemInfo WHERE $id = $myid');
-    return result;
-  }
-
-  //Get Number of objects in the database 
-  Future<int> getCount() async
-  {
-    Database db = await this.database;
-    List<Map<String, dynamic>> x = await db.rawQuery('SELECT COUNT (*) FROM $itemInfo');
-    int result = Sqflite.firstIntValue(x);
-    return result; 
-  }
-
-  Future<List<Transactions>> getTransactionList() async
-  {
-    var txnMapList = await getTransactionMapList();
-    int count = txnMapList.length;
-
-    List<Transactions> txnList = List<Transactions>();
-
-    for(int i=0;i<count;i++)
-    {
-      txnList.add(Transactions.fromMapObject(txnMapList[i]));
-    }
-
-    return txnList;  
-  }
-
 }
