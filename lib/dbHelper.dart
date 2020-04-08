@@ -21,7 +21,6 @@ class DBhelper
       }
     return database;
   }
-  
 
   Future<void> insertTransaction(Transactions txn) async {
     // Get a reference to the database.
