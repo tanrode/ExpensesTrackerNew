@@ -22,6 +22,15 @@ class DBhelper
     return database;
   }
 
+  Future<String> getTotal() async
+  {
+    final Database db = await database();
+    var res = await db.rawQuery("SELECT SUM(amt) FROM transactions");
+    var res1 = res.toString().substring(12);
+    var res2 = res1.substring(0,res1.length-2);
+    return (res2);
+  }
+
   Future<void> insertTransaction(Transactions txn) async {
     // Get a reference to the database.
     final Database db = await database();

@@ -32,10 +32,12 @@ class _ExpenseTrackerState extends State<ExpenseTracker> {
   String amt;
   String name;
   String date;
+  String totalAmt=' ';
 
   void setStart() async
   {
     items = await db.dogs();
+    totalAmt = await db.getTotal();
     setState(() {
       start=1;
     });
@@ -48,15 +50,30 @@ class _ExpenseTrackerState extends State<ExpenseTracker> {
       return;  
     await db.insertTransaction(Transactions(name: name,amt: int.parse(amt),date: date));
     items = await db.dogs();
+    totalAmt = await db.getTotal();
+    Navigator.of(context).pop();
     setState(() {
       start = 1;
     });
   }
 
   void removeItem(String name) async {
+    if(name.isEmpty)
+      return;
     await db.deleteTransaction(name);
     items = await db.dogs();
+    totalAmt = await db.getTotal();
+    Navigator.of(context).pop();
     setState(() {});
+  }
+
+  void dateSelecter()
+  {
+    showDatePicker(context: context, initialDate: DateTime.now(), firstDate: DateTime(2019), lastDate: DateTime.now()).then((pickedDate) {
+      if(pickedDate == null)
+        return;
+      date = DateFormat('yMMMd').format(pickedDate).toString();  
+    });
   }
 
   void startTransaction(BuildContext ctx)
@@ -73,11 +90,21 @@ class _ExpenseTrackerState extends State<ExpenseTracker> {
                     children: <Widget>[
                       TextField(decoration: InputDecoration(labelText: 'Enter Item'), onChanged: (val) => name = val,),
                       TextField(decoration: InputDecoration(labelText: 'Enter Price'),keyboardType: TextInputType.number, onChanged: (val) => amt = val,),
-                      TextField(decoration: InputDecoration(labelText: 'Date'), keyboardType: TextInputType.datetime, onChanged: (val) => date=DateFormat('yMMMd').format(DateTime.now()) ,),
+                      Container(
+                        margin: EdgeInsets.fromLTRB(0, 15, 15, 15),
+                        child: Row(
+                          children: <Widget>[
+                            //TextField(decoration: InputDecoration(labelText: 'Date'), keyboardType: TextInputType.number, onChanged: (val) => date=DateFormat('yMMMd').format(DateTime.now()),),
+                            Text(date == null ? 'Choose a Date' : date),
+                            IconButton(icon: Icon(Icons.calendar_today,size: 35,color: Color.fromRGBO(200, 100, 150, 1),), onPressed: dateSelecter)
+                          ],
+                          mainAxisAlignment: MainAxisAlignment.start,
+                        ),
+                      ),
                       Row(
                         children: <Widget>[
                           RaisedButton(child: Text('Add'), onPressed: () => addItem(amt,name,date),),
-                          RaisedButton(child: Text('Delete'), onPressed: () => removeItem(name), ),
+                          RaisedButton(child: Text('Delete'), onPressed: () => removeItem(name),),
                         ],
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       ),
@@ -119,14 +146,22 @@ class _ExpenseTrackerState extends State<ExpenseTracker> {
                 Column(
                   children: <Widget>[
                     Container(
-                      height: 145,
+                      height: 68,
+                      child:Card(
+                        color: Colors.yellow,
+                        child: Text(totalAmt == null ? 'No Amount Spent' : 'Total Spendings \nRs. '+totalAmt,style: TextStyle(fontSize:25,fontWeight:FontWeight.bold),textAlign: TextAlign.center,),
+                      ),
+                    ),
+                    Container(
+                      height: 105,
                       width: double.infinity,
                       child: Card(
+                        color: Colors.pink,
                         child: Text('Chart will come here',style: TextStyle(fontSize:30,fontWeight:FontWeight.bold),textAlign: TextAlign.center,),
                       ),
                     ),
                     Container(
-                      height: 336,
+                      height: 316,
                       child: ListView(
                         children: items.map((txn) {
                             return Card(
